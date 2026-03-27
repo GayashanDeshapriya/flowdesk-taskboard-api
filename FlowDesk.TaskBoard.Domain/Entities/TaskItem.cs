@@ -44,12 +44,17 @@ namespace FlowDesk.TaskBoard.Domain.Entities
         public TaskStatus Status { get; set; }
         public TaskPriority Priority { get; set; }
         public DateTimeOffset? DueDateUtc { get; set; }
+
         public Guid ProjectId { get; set; }
         public Project Project { get; set; } = null!;
+
+        public Guid CreatedById { get; set; }
+        public User CreatedBy { get; set; } = null!;
+
         public Guid? AssigneeId { get; set; }
         public User? Assignee { get; set; }
+
         public bool IsArchived { get; set; }
-        public Guid CreatedById { get; set; }
         public DateTimeOffset? ArchivedAtUtc { get; set; }
 
         public void UpdateDetails(string title, string? description, TaskPriority priority, DateTimeOffset? dueDateUtc)
