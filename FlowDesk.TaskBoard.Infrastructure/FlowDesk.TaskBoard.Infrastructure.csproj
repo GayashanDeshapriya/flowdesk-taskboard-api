@@ -24,4 +24,9 @@
     <ProjectReference Include="..\FlowDesk.TaskBoard.Domain\FlowDesk.TaskBoard.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Services\" />
+    <Folder Include="Repositories\" />
+  </ItemGroup>
+
 </Project>
