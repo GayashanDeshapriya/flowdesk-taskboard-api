@@ -12,9 +12,10 @@ namespace FlowDesk.TaskBoard.Domain.Entities
         private User() { }
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string PasswordHash { get; set; } = string.Empty;
         public SystemRole Role { get; set; }
 
-        public ICollection<TaskItem> AssignedTasks { get; set; } = new List<TaskItem>();
+        public ICollection<TaskItem> AssignedTasks { get; set; } = [];
 
         public User(string fullName, string email, SystemRole role)
         {

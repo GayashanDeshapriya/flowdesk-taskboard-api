@@ -9,6 +9,7 @@ namespace FlowDesk.TaskBoard.Domain.Entities
 
         public TaskItem(
             Guid projectId,
+            Guid createdById,
             string title,
             TaskPriority priority,
             DateTimeOffset? dueDateUtc = null,
@@ -18,6 +19,9 @@ namespace FlowDesk.TaskBoard.Domain.Entities
             if (projectId == Guid.Empty)
                 throw new ArgumentException("ProjectId is required.", nameof(projectId));
 
+            if (createdById == Guid.Empty)
+                throw new ArgumentException("CreatedById is required.", nameof(createdById));
+
             if (string.IsNullOrWhiteSpace(title))
                 throw new ArgumentException("Title is required.", nameof(title));
 
@@ -25,6 +29,7 @@ namespace FlowDesk.TaskBoard.Domain.Entities
                 throw new ArgumentException("Due date cannot be in the past.", nameof(dueDateUtc));
 
             ProjectId = projectId;
+            CreatedById = createdById;
             Title = title.Trim();
             Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
             Priority = priority;
@@ -39,14 +44,12 @@ namespace FlowDesk.TaskBoard.Domain.Entities
         public TaskStatus Status { get; set; }
         public TaskPriority Priority { get; set; }
         public DateTimeOffset? DueDateUtc { get; set; }
-
         public Guid ProjectId { get; set; }
         public Project Project { get; set; } = null!;
-
         public Guid? AssigneeId { get; set; }
         public User? Assignee { get; set; }
-
         public bool IsArchived { get; set; }
+        public Guid CreatedById { get; set; }
         public DateTimeOffset? ArchivedAtUtc { get; set; }
 
         public void UpdateDetails(string title, string? description, TaskPriority priority, DateTimeOffset? dueDateUtc)

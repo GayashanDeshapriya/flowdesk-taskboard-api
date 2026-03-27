@@ -10,11 +10,9 @@ namespace FlowDesk.TaskBoard.Domain.Entities
     {
         private Project() { }
 
-        public string Name { get; private set; } = string.Empty;
-        public string? Description { get; private set; }
-
-        public ICollection<TaskItem> Tasks { get; private set; } = new List<TaskItem>();
-
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public ICollection<TaskItem> Tasks { get; set; } = [];
 
         public Project(string name, string? description = null)
         {
