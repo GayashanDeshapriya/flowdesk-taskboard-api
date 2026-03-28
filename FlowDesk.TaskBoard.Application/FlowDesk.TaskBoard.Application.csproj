@@ -18,6 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Interfaces\" />
+    <Folder Include="DTOs\" />
+    <Folder Include="Common\" />
+    <Folder Include="DTOs\" />
+    <Folder Include="Common\" />
     <Folder Include="Validators\" />
     <Folder Include="Services\" />
   </ItemGroup>
