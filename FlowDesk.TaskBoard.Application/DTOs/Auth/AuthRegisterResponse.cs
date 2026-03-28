@@ -1,7 +1,7 @@
 ﻿namespace FlowDesk.TaskBoard.Application.DTOs.Auth
 {
 
-    public sealed record AuthResponse(
+    public sealed record AuthRegisterResponse(
         Guid UserId,
         string Email,
         string FullName,

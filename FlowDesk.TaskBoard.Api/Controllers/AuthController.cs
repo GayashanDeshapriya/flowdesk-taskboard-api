@@ -21,7 +21,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
 
         [AllowAnonymous]
         [HttpPost("register")]
-        public async Task<ActionResult<AuthResponse>> Register(
+        public async Task<ActionResult<AuthRegisterResponse>> Register(
             [FromBody] RegisterRequest request,
             CancellationToken cancellationToken)
         {
@@ -42,7 +42,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
 
         [AllowAnonymous]
         [HttpPost("login")]
-        public async Task<ActionResult<AuthResponse>> Login(
+        public async Task<ActionResult<AuthLoginResponse>> Login(
             [FromBody] LoginRequest request,
             CancellationToken cancellationToken)
         {

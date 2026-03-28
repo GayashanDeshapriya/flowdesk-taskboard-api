@@ -24,7 +24,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             _jwtTokenGenerator = jwtTokenGenerator;
         }
 
-        public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
+        public async Task<AuthRegisterResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
         {
             var email = NormalizeEmail(request.Email);
 
@@ -46,10 +46,10 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             _dbContext.Users.Add(user);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return BuildAuthResponse(user);
+            return BuildRegisterResponse(user);
         }
 
-        public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+        public async Task<AuthLoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
         {
             var email = NormalizeEmail(request.Email);
 
@@ -70,11 +70,23 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             return BuildAuthResponse(user);
         }
 
-        private AuthResponse BuildAuthResponse(User user)
+        private AuthRegisterResponse BuildRegisterResponse(User user)
         {
             var (accessToken, expiresAtUtc) = _jwtTokenGenerator.GenerateToken(user);
 
-            return new AuthResponse(
+            return new AuthRegisterResponse(          
+                user.Id,
+                user.Email,
+                user.FullName,
+                user.Role.ToString());
+        }
+
+        private AuthLoginResponse BuildAuthResponse(User user)
+        {
+            var (accessToken, expiresAtUtc) = _jwtTokenGenerator.GenerateToken(user);
+
+            return new AuthLoginResponse(
+                accessToken,
                 user.Id,
                 user.Email,
                 user.FullName,
