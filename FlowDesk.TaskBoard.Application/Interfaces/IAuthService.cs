@@ -1,4 +1,4 @@
-﻿using FlowDesk.TaskBoard.Application.DTOs;
+﻿using FlowDesk.TaskBoard.Application.DTOs.Auth;
 
 namespace FlowDesk.TaskBoard.Application.Interfaces;
 

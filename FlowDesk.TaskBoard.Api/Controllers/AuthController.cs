@@ -1,6 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FlowDesk.TaskBoard.Application.DTOs;
+using FlowDesk.TaskBoard.Application.DTOs.Auth;
 using FlowDesk.TaskBoard.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
