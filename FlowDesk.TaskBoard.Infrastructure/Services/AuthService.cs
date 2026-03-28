@@ -79,15 +79,13 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
         {
             var (accessToken, expiresAtUtc) = _jwtTokenGenerator.GenerateToken(user);
 
-            return new AuthResponse
-            {
-                AccessToken = accessToken,
-                ExpiresAtUtc = expiresAtUtc,
-                UserId = user.Id,
-                Email = user.Email,
-                FullName = user.FullName,
-                Role = user.Role.ToString()
-            };
+            return new AuthResponse(
+                accessToken,
+                expiresAtUtc,
+                user.Id,
+                user.Email,
+                user.FullName,
+                user.Role.ToString());
         }
 
         private static string NormalizeEmail(string email)
