@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FlowDesk.TaskBoard.Application.DTOs;
+﻿using FlowDesk.TaskBoard.Application.DTOs.Auth;
 using FlowDesk.TaskBoard.Application.Interfaces;
 using FlowDesk.TaskBoard.Domain.Entities;
 using FlowDesk.TaskBoard.Domain.Enums;
