@@ -75,8 +75,6 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             var (accessToken, expiresAtUtc) = _jwtTokenGenerator.GenerateToken(user);
 
             return new AuthResponse(
-                accessToken,
-                expiresAtUtc,
                 user.Id,
                 user.Email,
                 user.FullName,
