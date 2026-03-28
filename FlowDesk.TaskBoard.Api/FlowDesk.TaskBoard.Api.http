@@ -1,6 +1,0 @@
-@FlowDesk.TaskBoard.Api_HostAddress = http://localhost:5052
-
-GET {{FlowDesk.TaskBoard.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
