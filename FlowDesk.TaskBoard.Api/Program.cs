@@ -13,6 +13,8 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+//to check which mode is on
+Console.WriteLine($"🔧 Running in: {builder.Environment.EnvironmentName}");
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -91,6 +93,19 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    // Seed database
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<TaskBoardDbContext>();
+        var forceReseed = app.Environment.IsDevelopment() &&
+                          builder.Configuration.GetValue<bool>("SeedDatabase:ForceReseed");
+
+        await SeedData.InitializeDatabaseAsync(context, forceReseed=true);
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
