@@ -66,13 +66,32 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             return ToDto(task);
         }
 
-        public async Task<TaskDto?> GetTaskByIdAsync(Guid taskId, CancellationToken cancellationToken = default)
+        public async Task<TaskDto?> GetTaskByIdAsync(
+            Guid taskId, 
+            Guid currentUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
         {
+            if (currentUserId == Guid.Empty)
+                throw new UnauthorizedAccessException("Invalid current user.");
+
             var task = await _dbContext.TaskItems
                 .AsNoTracking()
                 .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
 
-            return task is null ? null : ToDto(task);
+            if (task is null)
+                return null;
+
+            if(!isAdmin)
+            {
+                var hasAccess = await _dbContext.ProjectMembers
+                    .AsNoTracking()
+                    .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == currentUserId, cancellationToken);
+                if (!hasAccess)
+                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
+            }
+
+            return ToDto(task);
         }
 
         private static TaskDto ToDto(TaskItem task) =>

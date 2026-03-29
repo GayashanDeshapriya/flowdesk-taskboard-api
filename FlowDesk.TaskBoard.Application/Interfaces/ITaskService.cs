@@ -14,7 +14,9 @@ namespace FlowDesk.TaskBoard.Application.Interfaces
             Guid currentUserId,
             CancellationToken cancellationToken = default);
         Task<TaskDto?> GetTaskByIdAsync(
-            Guid taskId, 
+            Guid taskId,
+            Guid currentUserId,
+            bool isAdmin,
             CancellationToken cancellationToken = default);
     }
 }
