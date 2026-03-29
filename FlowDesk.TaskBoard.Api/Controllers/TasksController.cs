@@ -21,14 +21,15 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<TaskDto>> Create([FromBody] CreateTaskRequest request, CancellationToken cancellationToken)
+        [Authorize(Policy = "TeamMemberOrAbove")]
+        public async Task<ActionResult<TaskDto>> Create(
+            [FromBody] CreateTaskRequest request,
+            Guid createdById,
+            CancellationToken cancellationToken)
         {
-            if (!TryGetCurrentUserId(out var currentUserId))
-                return Unauthorized(new { message = "Invalid token subject." });
-
             try
             {
-                var created = await _taskService.CreateTaskAsync(request, currentUserId, cancellationToken);
+                var created = await _taskService.CreateTaskAsync(request, createdById, cancellationToken);
                 return CreatedAtAction(nameof(GetById), new { taskId = created.Id }, created);
             }
             catch (KeyNotFoundException ex)
@@ -43,50 +44,27 @@ namespace FlowDesk.TaskBoard.Api.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-            }
         }
 
         [HttpGet("{taskId:guid}")]
-        public async Task<ActionResult<TaskDto>> GetById(Guid taskId, CancellationToken cancellationToken)
+        public async Task<ActionResult<TaskDto>> GetById(
+            Guid taskId,
+            CancellationToken cancellationToken)
         {
-            if (!TryGetCurrentUserId(out var currentUserId))
-                return Unauthorized(new { message = "Invalid token subject." });
-
-            try
-            {
-                var task = await _taskService.GetTaskByIdAsync(
-                    taskId,
-                    currentUserId,
-                    User.IsInRole(nameof(SystemRole.Admin)),
-                    cancellationToken);
-
-                return task is null ? NotFound() : Ok(task);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-            }
+            var task = await _taskService.GetTaskByIdAsync(taskId, cancellationToken);
+            return task is null ? NotFound() : Ok(task);
         }
 
-
         [HttpPut("{taskId:guid}")]
-        public async Task<ActionResult<TaskDto>> Update(Guid taskId, [FromBody] UpdateTaskRequest request, CancellationToken cancellationToken)
+        [Authorize]
+        public async Task<ActionResult<TaskDto>> Update(
+            Guid taskId,
+            [FromBody] UpdateTaskRequest request,
+            CancellationToken cancellationToken)
         {
-            if (!TryGetCurrentUserId(out var currentUserId))
-                return Unauthorized(new { message = "Invalid token subject." });
-
             try
             {
-                var updated = await _taskService.UpdateTaskAsync(
-                    taskId,
-                    request,
-                    currentUserId,
-                    User.IsInRole(nameof(SystemRole.Admin)),
-                    cancellationToken);
-
+                var updated = await _taskService.UpdateTaskAsync(taskId, request, cancellationToken);
                 return Ok(updated);
             }
             catch (KeyNotFoundException ex)
@@ -97,35 +75,18 @@ namespace FlowDesk.TaskBoard.Api.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-            }
         }
 
-
-        [HttpPatch("{taskId:guid}/status")]
+        [HttpPut("{taskId:guid}/status")]
+        [Authorize]
         public async Task<ActionResult<TaskDto>> ChangeStatus(
             Guid taskId,
             [FromBody] ChangeTaskStatusRequest request,
             CancellationToken cancellationToken)
         {
-            if (!TryGetCurrentUserId(out var currentUserId))
-                return Unauthorized(new { message = "Invalid token subject." });
-
             try
             {
-                var updated = await _taskService.ChangeStatusAsync(
-                    taskId,
-                    request,
-                    currentUserId,
-                    User.IsInRole(nameof(SystemRole.Admin)),
-                    cancellationToken);
-
+                var updated = await _taskService.ChangeStatusAsync(taskId,request ,cancellationToken);
                 return Ok(updated);
             }
             catch (KeyNotFoundException ex)
@@ -140,25 +101,18 @@ namespace FlowDesk.TaskBoard.Api.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-            }
+            
         }
 
 
         [HttpPatch("{taskId:guid}/archive")]
         public async Task<ActionResult<TaskDto>> Archive(Guid taskId, CancellationToken cancellationToken)
         {
-            if (!TryGetCurrentUserId(out var currentUserId))
-                return Unauthorized(new { message = "Invalid token subject." });
-
+            
             try
             {
                 var archived = await _taskService.ArchiveTaskAsync(
-                    taskId,
-                    currentUserId,
-                    User.IsInRole(nameof(SystemRole.Admin)),
+                    taskId,              
                     cancellationToken);
 
                 return Ok(archived);
@@ -177,13 +131,5 @@ namespace FlowDesk.TaskBoard.Api.Controllers
             }
         }
 
-        private bool TryGetCurrentUserId(out Guid userId)
-        {
-            var rawUserId =
-                User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-
-            return Guid.TryParse(rawUserId, out userId);
-        }
     }
 }

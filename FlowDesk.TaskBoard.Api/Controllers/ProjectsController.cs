@@ -99,9 +99,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
                 
                 var tasks = await _taskService.GetProjectTasksAsync(
                     projectId,
-                    query,
-                    currentUserId,
-                    User.IsInRole(nameof(SystemRole.Admin)),
+                    query,                  
                     cancellationToken);
 
                 return Ok(tasks);

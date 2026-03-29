@@ -11,40 +11,30 @@ namespace FlowDesk.TaskBoard.Application.Interfaces
     {
         Task<TaskDto> CreateTaskAsync(
             CreateTaskRequest request,
-            Guid currentUserId,
+            Guid createdById,
             CancellationToken cancellationToken = default);
 
         Task<TaskDto?> GetTaskByIdAsync(
             Guid taskId,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default);
 
         Task<ProjectTaskListResponse> GetProjectTasksAsync(
             Guid projectId,
             GetProjectTasksQuery query,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default);
 
         Task<TaskDto> UpdateTaskAsync(
             Guid taskId,
             UpdateTaskRequest request,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default);
 
         Task<TaskDto> ChangeStatusAsync(
             Guid taskId,
             ChangeTaskStatusRequest request,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default);
 
         Task<TaskDto> ArchiveTaskAsync(
             Guid taskId,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default);
     }
 }

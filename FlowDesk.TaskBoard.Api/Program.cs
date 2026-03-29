@@ -57,6 +57,11 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdminOnly", policy => policy.RequireRole(nameof(SystemRole.Admin)));
     options.AddPolicy("TeamLeadOrAdmin", policy =>
         policy.RequireRole(nameof(SystemRole.TeamLead), nameof(SystemRole.Admin)));
+    options.AddPolicy("TeamMemberOrAbove", policy =>
+       policy.RequireRole(
+           nameof(SystemRole.TeamMember),
+           nameof(SystemRole.TeamLead),
+           nameof(SystemRole.Admin)));
 });
 
 builder.Services.AddSwaggerGen(options =>

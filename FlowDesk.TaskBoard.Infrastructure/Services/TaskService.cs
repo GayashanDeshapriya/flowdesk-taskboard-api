@@ -18,12 +18,10 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
         public async Task<TaskDto> CreateTaskAsync(
             CreateTaskRequest request,
-            Guid currentUserId,
+            Guid createdById,
             CancellationToken cancellationToken = default)
         {
-            if (currentUserId == Guid.Empty)
-                throw new UnauthorizedAccessException("Invalid current user.");
-
+            
             var projectExists = await _dbContext.Projects
                 .AnyAsync(p => p.Id == request.ProjectId, cancellationToken);
 
@@ -32,7 +30,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
             var creatorInProject = await _dbContext.ProjectMembers
                 .AsNoTracking()
-                .AnyAsync(pm => pm.ProjectId == request.ProjectId && pm.UserId == currentUserId, cancellationToken);
+                .AnyAsync(pm => pm.ProjectId == request.ProjectId , cancellationToken);
 
             if (!creatorInProject)
                 throw new UnauthorizedAccessException("Current user is not a member of the project.");
@@ -54,7 +52,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
             var task = new TaskItem(
                 request.ProjectId,
-                currentUserId,
+                createdById,
                 request.Title,
                 request.Priority,
                 request.DueDateUtc,
@@ -69,12 +67,9 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
         public async Task<TaskDto?> GetTaskByIdAsync(
             Guid taskId,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default)
         {
-            if (currentUserId == Guid.Empty)
-                throw new UnauthorizedAccessException("Invalid current user.");
+            
 
             var task = await _dbContext.TaskItems
                 .AsNoTracking()
@@ -83,44 +78,21 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             if (task is null)
                 return null;
 
-            if (!isAdmin)
-            {
-                var hasAccess = await _dbContext.ProjectMembers
-                    .AsNoTracking()
-                    .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == currentUserId, cancellationToken);
-
-                if (!hasAccess)
-                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
-            }
-
             return ToDto(task);
         }
 
         public async Task<ProjectTaskListResponse> GetProjectTasksAsync(
             Guid projectId,
-            GetProjectTasksQuery query,
-            Guid currentUserId,
-            bool isAdmin,
+            GetProjectTasksQuery query,      
             CancellationToken cancellationToken = default)
         {
-            if (currentUserId == Guid.Empty)
-                throw new UnauthorizedAccessException("Invalid current user.");
+            
 
             var projectExists = await _dbContext.Projects
                 .AnyAsync(p => p.Id == projectId, cancellationToken);
 
             if (!projectExists)
-                throw new KeyNotFoundException($"Project '{projectId}' was not found.");
-
-            if (!isAdmin)
-            {
-                var hasAccess = await _dbContext.ProjectMembers
-                    .AsNoTracking()
-                    .AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == currentUserId, cancellationToken);
-
-                if (!hasAccess)
-                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
-            }
+                throw new KeyNotFoundException($"Project '{projectId}' was not found.");   
 
             if (query.Status.HasValue && !Enum.IsDefined(query.Status.Value))
                 throw new ArgumentException("Invalid status filter.", nameof(query.Status));
@@ -208,12 +180,9 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
         public async Task<TaskDto> UpdateTaskAsync(
             Guid taskId,
             UpdateTaskRequest request,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default)
         {
-            if (currentUserId == Guid.Empty)
-                throw new UnauthorizedAccessException("Invalid current user.");
+            
 
             var task = await _dbContext.TaskItems
                 .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
@@ -221,15 +190,6 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             if (task is null)
                 throw new KeyNotFoundException($"Task '{taskId}' was not found.");
 
-            if (!isAdmin)
-            {
-                var hasAccess = await _dbContext.ProjectMembers
-                    .AsNoTracking()
-                    .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == currentUserId, cancellationToken);
-
-                if (!hasAccess)
-                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
-            }
 
             if (task.IsArchived)
                 throw new InvalidOperationException("Archived tasks cannot be updated.");
@@ -265,13 +225,9 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
         public async Task<TaskDto> ChangeStatusAsync(
             Guid taskId,
             ChangeTaskStatusRequest request,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default)
         {
-            if (currentUserId == Guid.Empty)
-                throw new UnauthorizedAccessException("Invalid current user.");
-
+            
             if (!Enum.IsDefined(request.NewStatus))
                 throw new ArgumentException("Invalid task status value.", nameof(request.NewStatus));
 
@@ -284,16 +240,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             if (!Enum.IsDefined(task.Status))
                 throw new InvalidOperationException("Task has an invalid current status.");
 
-            if (!isAdmin)
-            {
-                var hasAccess = await _dbContext.ProjectMembers
-                    .AsNoTracking()
-                    .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == currentUserId, cancellationToken);
-
-                if (!hasAccess)
-                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
-            }
-
+           
             task.ChangeStatus(request.NewStatus);
 
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -303,29 +250,15 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
         public async Task<TaskDto> ArchiveTaskAsync(
             Guid taskId,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default)
         {
-            if (currentUserId == Guid.Empty)
-                throw new UnauthorizedAccessException("Invalid current user.");
-
+            
             var task = await _dbContext.TaskItems
                 .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
 
             if (task is null)
                 throw new KeyNotFoundException($"Task '{taskId}' was not found.");
-
-            if (!isAdmin)
-            {
-                var hasAccess = await _dbContext.ProjectMembers
-                    .AsNoTracking()
-                    .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == currentUserId, cancellationToken);
-
-                if (!hasAccess)
-                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
-            }
-
+      
             task.Archive();
 
             await _dbContext.SaveChangesAsync(cancellationToken);
