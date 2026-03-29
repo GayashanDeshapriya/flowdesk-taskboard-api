@@ -16,24 +16,31 @@ namespace FlowDesk.TaskBoard.Api.Controllers
     {
         private readonly IProjectService _projectService;
         private readonly ITaskService _taskService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public ProjectsController(IProjectService projectService, ITaskService taskService)
+        public ProjectsController(
+            IProjectService projectService,
+            ITaskService taskService,
+            ICurrentUserService currentUserService)
         {
             _projectService = projectService;
             _taskService = taskService;
+            _currentUserService = currentUserService;
         }
 
         [HttpPost]
         [Authorize(Policy = "TeamLeadOrAdmin")]
         public async Task<ActionResult<ProjectDetailsResponse>> Create(
             [FromBody] CreateProjectRequest request,
-            Guid createdById,
             CancellationToken cancellationToken)
         {
             
             try
             {
-                var created = await _projectService.CreateAsync(request,createdById, cancellationToken);
+                if (!_currentUserService.UserId.HasValue)
+                    return StatusCode(StatusCodes.Status403Forbidden, new { message = "Authenticated user context is unavailable." });
+
+                var created = await _projectService.CreateAsync(request, _currentUserService.UserId.Value, cancellationToken);
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
             catch (ArgumentException ex)

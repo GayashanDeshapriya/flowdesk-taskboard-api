@@ -14,22 +14,28 @@ namespace FlowDesk.TaskBoard.Api.Controllers
     public sealed class TasksController : ControllerBase
     {
         private readonly ITaskService _taskService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public TasksController(ITaskService taskService)
+        public TasksController(
+            ITaskService taskService,
+            ICurrentUserService currentUserService)
         {
             _taskService = taskService;
+            _currentUserService = currentUserService;
         }
 
         [HttpPost]
         [Authorize(Policy = "TeamMemberOrAbove")]
         public async Task<ActionResult<TaskDto>> Create(
             [FromBody] CreateTaskRequest request,
-            Guid createdById,
             CancellationToken cancellationToken)
         {
             try
             {
-                var created = await _taskService.CreateTaskAsync(request, createdById, cancellationToken);
+                if (!_currentUserService.UserId.HasValue)
+                    return StatusCode(StatusCodes.Status403Forbidden, new { message = "Authenticated user context is unavailable." });
+
+                var created = await _taskService.CreateTaskAsync(request, _currentUserService.UserId.Value, cancellationToken);
                 return CreatedAtAction(nameof(GetById), new { taskId = created.Id }, created);
             }
             catch (KeyNotFoundException ex)

@@ -30,7 +30,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
             var creatorInProject = await _dbContext.ProjectMembers
                 .AsNoTracking()
-                .AnyAsync(pm => pm.ProjectId == request.ProjectId , cancellationToken);
+                .AnyAsync(pm => pm.ProjectId == request.ProjectId && pm.UserId == createdById, cancellationToken);
 
             if (!creatorInProject)
                 throw new UnauthorizedAccessException("Current user is not a member of the project.");
