@@ -9,6 +9,11 @@ namespace FlowDesk.TaskBoard.Application.Interfaces
             Guid currentUserId,
             CancellationToken cancellationToken = default);
 
+        Task<IEnumerable<ProjectDetailsResponse>> GetAllAsync(
+            Guid currentUserId, 
+            bool isAdmin, 
+            CancellationToken cancellationToken = default);
+
         Task<ProjectDetailsResponse> GetByIdAsync(
             Guid projectId,
             Guid currentUserId,

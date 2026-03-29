@@ -50,7 +50,41 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
                 project.UpdatedAtUtc);
         }
 
-        
+        public async Task<IEnumerable<ProjectDetailsResponse>> GetAllAsync(
+            Guid currentUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
+        {
+            if (isAdmin)
+            {
+                return await _dbContext.Projects
+                    .AsNoTracking()
+                    .Select(p => new ProjectDetailsResponse(
+                        p.Id,
+                        p.Name,
+                        p.Description,
+                        p.CreatedAtUtc,
+                        p.UpdatedAtUtc))
+                    .ToListAsync(cancellationToken);
+            }
+            else
+            {
+                return await _dbContext.ProjectMembers
+                    .AsNoTracking()
+                    .Where(pm => pm.UserId == currentUserId)
+                    .Join(_dbContext.Projects,
+                        pm => pm.ProjectId,
+                        p => p.Id,
+                        (pm, p) => new ProjectDetailsResponse(
+                            p.Id,
+                            p.Name,
+                            p.Description,
+                            p.CreatedAtUtc,
+                            p.UpdatedAtUtc))
+                    .ToListAsync(cancellationToken);
+            }
+        }
+
         public async Task<ProjectDetailsResponse> GetByIdAsync(
             Guid projectId,
             Guid currentUserId,

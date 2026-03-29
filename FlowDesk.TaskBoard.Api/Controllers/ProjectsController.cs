@@ -1,4 +1,5 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using FlowDesk.TaskBoard.Application.DTOs.Project;
 using FlowDesk.TaskBoard.Application.Interfaces;
 using FlowDesk.TaskBoard.Domain.Enums;
@@ -43,6 +44,16 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         }
 
 
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<ProjectDetailsResponse>>> GetAll(CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var currentUserId))
+                return Unauthorized(new { message = "Invalid token subject." });
+            var projects = await _projectService.GetAllAsync(currentUserId, User.IsInRole(nameof(SystemRole.Admin)), cancellationToken);
+            return Ok(projects);
+        }
+
+
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<ProjectDetailsResponse>> GetById(Guid id, CancellationToken cancellationToken)
         {
@@ -71,8 +82,11 @@ namespace FlowDesk.TaskBoard.Api.Controllers
 
         private bool TryGetCurrentUserId(out Guid userId)
         {
-            var sub = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            return Guid.TryParse(sub, out userId);
+            var rawUserId =
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+            return Guid.TryParse(rawUserId, out userId);
         }
     }
 }
