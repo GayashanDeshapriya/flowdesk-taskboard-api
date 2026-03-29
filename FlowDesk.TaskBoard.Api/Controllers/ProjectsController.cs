@@ -90,22 +90,21 @@ namespace FlowDesk.TaskBoard.Api.Controllers
             }
         }
 
+
         [HttpGet("{projectId:guid}/tasks")]
         [Authorize(Policy = "TeamLeadOrAdmin")]
         public async Task<ActionResult<IEnumerable<ProjectTaskOverviewDto>>> GetTasks(
             Guid projectId,
-            [FromQuery] bool includeArchived,
+            [FromQuery] GetProjectTasksQuery query,
             CancellationToken cancellationToken)
         {
             
             try
             {
-                var query = new GetProjectTasksQuery { IncludeArchived = includeArchived };
-                
                 var tasks = await _taskService.GetProjectTasksAsync(
-                    projectId,
-                    query,                  
-                    cancellationToken);
+                projectId,
+                query,
+                cancellationToken);
 
                 return Ok(tasks);
             }
