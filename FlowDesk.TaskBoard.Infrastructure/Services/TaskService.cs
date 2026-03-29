@@ -8,6 +8,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 {
     public sealed class TaskService : ITaskService
     {
+        private const int MaxPageSize = 100;
         private readonly TaskBoardDbContext _dbContext;
 
         public TaskService(TaskBoardDbContext dbContext)
@@ -67,7 +68,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
         }
 
         public async Task<TaskDto?> GetTaskByIdAsync(
-            Guid taskId, 
+            Guid taskId,
             Guid currentUserId,
             bool isAdmin,
             CancellationToken cancellationToken = default)
@@ -82,11 +83,12 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             if (task is null)
                 return null;
 
-            if(!isAdmin)
+            if (!isAdmin)
             {
                 var hasAccess = await _dbContext.ProjectMembers
                     .AsNoTracking()
                     .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == currentUserId, cancellationToken);
+
                 if (!hasAccess)
                     throw new UnauthorizedAccessException("Current user is not a member of the project.");
             }
@@ -94,30 +96,96 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             return ToDto(task);
         }
 
-        public async Task<IReadOnlyCollection<ProjectTaskOverviewDto>> GetProjectTasksAsync(
+        public async Task<ProjectTaskListResponse> GetProjectTasksAsync(
             Guid projectId,
+            GetProjectTasksQuery query,
             Guid currentUserId,
             bool isAdmin,
-            bool includeArchived,
             CancellationToken cancellationToken = default)
         {
             if (currentUserId == Guid.Empty)
                 throw new UnauthorizedAccessException("Invalid current user.");
+
             var projectExists = await _dbContext.Projects
                 .AnyAsync(p => p.Id == projectId, cancellationToken);
+
             if (!projectExists)
                 throw new KeyNotFoundException($"Project '{projectId}' was not found.");
+
             if (!isAdmin)
             {
                 var hasAccess = await _dbContext.ProjectMembers
                     .AsNoTracking()
                     .AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == currentUserId, cancellationToken);
+
                 if (!hasAccess)
                     throw new UnauthorizedAccessException("Current user is not a member of the project.");
             }
-            var tasks = await _dbContext.TaskItems
+
+            if (query.Status.HasValue && !Enum.IsDefined(query.Status.Value))
+                throw new ArgumentException("Invalid status filter.", nameof(query.Status));
+
+            if (query.Priority.HasValue && !Enum.IsDefined(query.Priority.Value))
+                throw new ArgumentException("Invalid priority filter.", nameof(query.Priority));
+
+            if (query.AssigneeId == Guid.Empty)
+                throw new ArgumentException("AssigneeId cannot be an empty GUID.", nameof(query.AssigneeId));
+
+            var pageNumber = query.PageNumber <= 0 ? 1 : query.PageNumber;
+            var pageSize = query.PageSize <= 0 ? 20 : query.PageSize;
+            if (pageSize > MaxPageSize)
+                pageSize = MaxPageSize;
+
+            var sortBy = (query.SortBy ?? "createdDate").Trim().ToLowerInvariant();
+            var sortDirection = (query.SortDirection ?? "desc").Trim().ToLowerInvariant();
+
+            if (sortBy is not ("duedate" or "createddate"))
+                throw new ArgumentException("SortBy must be either 'dueDate' or 'createdDate'.", nameof(query.SortBy));
+
+            if (sortDirection is not ("asc" or "desc"))
+                throw new ArgumentException("SortDirection must be either 'asc' or 'desc'.", nameof(query.SortDirection));
+
+            var taskQuery = _dbContext.TaskItems
                 .AsNoTracking()
-                .Where(t => t.ProjectId == projectId)
+                .Where(t => t.ProjectId == projectId);
+
+            if (!query.IncludeArchived)
+                taskQuery = taskQuery.Where(t => !t.IsArchived);
+
+            if (query.Status.HasValue)
+                taskQuery = taskQuery.Where(t => t.Status == query.Status.Value);
+
+            if (query.Priority.HasValue)
+                taskQuery = taskQuery.Where(t => t.Priority == query.Priority.Value);
+
+            if (query.AssigneeId.HasValue)
+                taskQuery = taskQuery.Where(t => t.AssigneeId == query.AssigneeId.Value);
+
+            taskQuery = (sortBy, sortDirection) switch
+            {
+                ("duedate", "asc") => taskQuery
+                    .OrderBy(t => t.DueDateUtc == null)
+                    .ThenBy(t => t.DueDateUtc)
+                    .ThenByDescending(t => t.CreatedAtUtc),
+
+                ("duedate", "desc") => taskQuery
+                    .OrderBy(t => t.DueDateUtc == null)
+                    .ThenByDescending(t => t.DueDateUtc)
+                    .ThenByDescending(t => t.CreatedAtUtc),
+
+                ("createddate", "asc") => taskQuery
+                    .OrderBy(t => t.CreatedAtUtc),
+
+                _ => taskQuery
+                    .OrderByDescending(t => t.CreatedAtUtc)
+            };
+
+            var totalCount = await taskQuery.CountAsync(cancellationToken);
+            var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            var items = await taskQuery
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .Select(t => new ProjectTaskOverviewDto(
                     t.Id,
                     t.Title,
@@ -128,7 +196,13 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
                     t.DueDateUtc,
                     t.IsArchived))
                 .ToListAsync(cancellationToken);
-            return tasks;
+
+            return new ProjectTaskListResponse(
+                items,
+                pageNumber,
+                pageSize,
+                totalCount,
+                totalPages);
         }
 
         public async Task<TaskDto> UpdateTaskAsync(
@@ -189,11 +263,11 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
         }
 
         public async Task<TaskDto> ChangeStatusAsync(
-           Guid taskId,
-           ChangeTaskStatusRequest request,
-           Guid currentUserId,
-           bool isAdmin,
-           CancellationToken cancellationToken = default)
+            Guid taskId,
+            ChangeTaskStatusRequest request,
+            Guid currentUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
         {
             if (currentUserId == Guid.Empty)
                 throw new UnauthorizedAccessException("Invalid current user.");
@@ -258,7 +332,6 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
             return ToDto(task);
         }
-
 
         private static TaskDto ToDto(TaskItem task) =>
             new(

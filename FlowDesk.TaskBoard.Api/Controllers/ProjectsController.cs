@@ -95,11 +95,13 @@ namespace FlowDesk.TaskBoard.Api.Controllers
 
             try
             {
+                var query = new GetProjectTasksQuery { IncludeArchived = includeArchived };
+                
                 var tasks = await _taskService.GetProjectTasksAsync(
                     projectId,
+                    query,
                     currentUserId,
                     User.IsInRole(nameof(SystemRole.Admin)),
-                    includeArchived,
                     cancellationToken);
 
                 return Ok(tasks);

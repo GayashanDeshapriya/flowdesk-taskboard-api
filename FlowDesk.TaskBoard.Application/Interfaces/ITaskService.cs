@@ -13,17 +13,18 @@ namespace FlowDesk.TaskBoard.Application.Interfaces
             CreateTaskRequest request,
             Guid currentUserId,
             CancellationToken cancellationToken = default);
+
         Task<TaskDto?> GetTaskByIdAsync(
             Guid taskId,
             Guid currentUserId,
             bool isAdmin,
             CancellationToken cancellationToken = default);
 
-        Task<IReadOnlyCollection<ProjectTaskOverviewDto>> GetProjectTasksAsync(
+        Task<ProjectTaskListResponse> GetProjectTasksAsync(
             Guid projectId,
+            GetProjectTasksQuery query,
             Guid currentUserId,
             bool isAdmin,
-            bool includeArchived,
             CancellationToken cancellationToken = default);
 
         Task<TaskDto> UpdateTaskAsync(
