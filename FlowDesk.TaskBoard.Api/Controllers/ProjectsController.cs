@@ -1,6 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FlowDesk.TaskBoard.Application.DTOs.Project;
+using FlowDesk.TaskBoard.Application.DTOs.Task;
 using FlowDesk.TaskBoard.Application.Interfaces;
 using FlowDesk.TaskBoard.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -14,10 +15,12 @@ namespace FlowDesk.TaskBoard.Api.Controllers
     public sealed class ProjectsController : ControllerBase
     {
         private readonly IProjectService _projectService;
+        private readonly ITaskService _taskService;
 
-        public ProjectsController(IProjectService projectService)
+        public ProjectsController(IProjectService projectService, ITaskService taskService)
         {
             _projectService = projectService;
+            _taskService = taskService;
         }
 
         [HttpPost]
@@ -49,6 +52,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         {
             if (!TryGetCurrentUserId(out var currentUserId))
                 return Unauthorized(new { message = "Invalid token subject." });
+
             var projects = await _projectService.GetAllAsync(currentUserId, User.IsInRole(nameof(SystemRole.Admin)), cancellationToken);
             return Ok(projects);
         }
@@ -69,6 +73,32 @@ namespace FlowDesk.TaskBoard.Api.Controllers
                     cancellationToken);
 
                 return Ok(project);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("{projectId:guid}/tasks")]
+        public async Task<ActionResult<IEnumerable<ProjectTaskOverviewDto>>> GetTasks(Guid projectId, CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var currentUserId))
+                return Unauthorized(new { message = "Invalid token subject." });
+
+            try
+            {
+                var tasks = await _taskService.GetProjectTasksAsync(
+                    projectId,
+                    currentUserId,
+                    User.IsInRole(nameof(SystemRole.Admin)),
+                    cancellationToken);
+
+                return Ok(tasks);
             }
             catch (KeyNotFoundException ex)
             {

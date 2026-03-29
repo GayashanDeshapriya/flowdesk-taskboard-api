@@ -94,6 +94,42 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             return ToDto(task);
         }
 
+        public async Task<IReadOnlyCollection<ProjectTaskOverviewDto>> GetProjectTasksAsync(
+            Guid projectId,
+            Guid currentUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
+        {
+            if (currentUserId == Guid.Empty)
+                throw new UnauthorizedAccessException("Invalid current user.");
+            var projectExists = await _dbContext.Projects
+                .AnyAsync(p => p.Id == projectId, cancellationToken);
+            if (!projectExists)
+                throw new KeyNotFoundException($"Project '{projectId}' was not found.");
+            if (!isAdmin)
+            {
+                var hasAccess = await _dbContext.ProjectMembers
+                    .AsNoTracking()
+                    .AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == currentUserId, cancellationToken);
+                if (!hasAccess)
+                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
+            }
+            var tasks = await _dbContext.TaskItems
+                .AsNoTracking()
+                .Where(t => t.ProjectId == projectId)
+                .Select(t => new ProjectTaskOverviewDto(
+                    t.Id,
+                    t.Title,
+                    t.Status,
+                    t.Priority,
+                    t.AssigneeId,
+                    t.Assignee != null ? t.Assignee.FullName : null,
+                    t.DueDateUtc,
+                    t.IsArchived))
+                .ToListAsync(cancellationToken);
+            return tasks;
+        }
+
         private static TaskDto ToDto(TaskItem task) =>
             new(
                 task.Id,

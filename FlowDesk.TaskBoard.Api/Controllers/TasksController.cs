@@ -1,5 +1,6 @@
 ﻿using FlowDesk.TaskBoard.Application.DTOs.Task;
 using FlowDesk.TaskBoard.Application.Interfaces;
+using FlowDesk.TaskBoard.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
@@ -27,7 +28,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
 
             try
             {
-                var created = await _taskService.CreateTaskAsync(request,currentUserId, cancellationToken);
+                var created = await _taskService.CreateTaskAsync(request, currentUserId, cancellationToken);
                 return CreatedAtAction(nameof(GetById), new { taskId = created.Id }, created);
             }
             catch (KeyNotFoundException ex)
@@ -42,13 +43,32 @@ namespace FlowDesk.TaskBoard.Api.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
         }
 
         [HttpGet("{taskId:guid}")]
         public async Task<ActionResult<TaskDto>> GetById(Guid taskId, CancellationToken cancellationToken)
         {
-            var task = await _taskService.GetTaskByIdAsync(taskId, cancellationToken);
-            return task is null ? NotFound() : Ok(task);
+            if (!TryGetCurrentUserId(out var currentUserId))
+                return Unauthorized(new { message = "Invalid token subject." });
+
+            try
+            {
+                var task = await _taskService.GetTaskByIdAsync(
+                    taskId,
+                    currentUserId,
+                    User.IsInRole(nameof(SystemRole.Admin)),
+                    cancellationToken);
+
+                return task is null ? NotFound() : Ok(task);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
         }
 
         private bool TryGetCurrentUserId(out Guid userId)
