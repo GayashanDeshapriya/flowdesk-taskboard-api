@@ -47,6 +47,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         }
 
         [HttpGet("{taskId:guid}")]
+        [Authorize(Policy = "TeamMemberOrAbove")]
         public async Task<ActionResult<TaskDto>> GetById(
             Guid taskId,
             CancellationToken cancellationToken)
@@ -56,7 +57,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         }
 
         [HttpPut("{taskId:guid}")]
-        [Authorize]
+        [Authorize(Policy = "TeamMemberOrAbove")]
         public async Task<ActionResult<TaskDto>> Update(
             Guid taskId,
             [FromBody] UpdateTaskRequest request,
@@ -78,7 +79,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         }
 
         [HttpPut("{taskId:guid}/status")]
-        [Authorize]
+        [Authorize(Policy = "TeamMemberOrAbove")]
         public async Task<ActionResult<TaskDto>> ChangeStatus(
             Guid taskId,
             [FromBody] ChangeTaskStatusRequest request,
@@ -106,6 +107,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
 
 
         [HttpPatch("{taskId:guid}/archive")]
+        [Authorize(Policy = "TeamLeadOrAdmin")]
         public async Task<ActionResult<TaskDto>> Archive(Guid taskId, CancellationToken cancellationToken)
         {
             

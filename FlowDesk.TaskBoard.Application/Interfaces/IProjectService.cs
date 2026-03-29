@@ -6,18 +6,14 @@ namespace FlowDesk.TaskBoard.Application.Interfaces
     {
         Task<ProjectDetailsResponse> CreateAsync(
             CreateProjectRequest request,
-            Guid currentUserId,
+            Guid createdById,
             CancellationToken cancellationToken = default);
 
         Task<IEnumerable<ProjectDetailsResponse>> GetAllAsync(
-            Guid currentUserId, 
-            bool isAdmin, 
             CancellationToken cancellationToken = default);
 
         Task<ProjectDetailsResponse> GetByIdAsync(
             Guid projectId,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default);
     }
 }

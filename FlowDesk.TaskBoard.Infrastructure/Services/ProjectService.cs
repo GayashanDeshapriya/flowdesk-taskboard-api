@@ -17,15 +17,13 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
         public async Task<ProjectDetailsResponse> CreateAsync(
             CreateProjectRequest request,
-            Guid currentUserId,
+            Guid createdById,
             CancellationToken cancellationToken = default)
         {
-            if (currentUserId == Guid.Empty)
-                throw new UnauthorizedAccessException("Invalid current user.");
 
             var userExists = await _dbContext.Users
                 .AsNoTracking()
-                .AnyAsync(u => u.Id == currentUserId, cancellationToken);
+                .AnyAsync(u => u.Id == createdById, cancellationToken);
 
             if (!userExists)
                 throw new KeyNotFoundException("Current user not found.");
@@ -36,7 +34,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             _dbContext.ProjectMembers.Add(new ProjectMember
             {
                 ProjectId = project.Id,
-                UserId = currentUserId,
+                UserId = createdById,
                 RoleInProject = "Owner"
             });
 
@@ -51,44 +49,25 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
         }
 
         public async Task<IEnumerable<ProjectDetailsResponse>> GetAllAsync(
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default)
         {
-            if (isAdmin)
-            {
-                return await _dbContext.Projects
-                    .AsNoTracking()
-                    .Select(p => new ProjectDetailsResponse(
-                        p.Id,
-                        p.Name,
-                        p.Description,
-                        p.CreatedAtUtc,
-                        p.UpdatedAtUtc))
-                    .ToListAsync(cancellationToken);
-            }
-            else
-            {
-                return await _dbContext.ProjectMembers
-                    .AsNoTracking()
-                    .Where(pm => pm.UserId == currentUserId)
-                    .Join(_dbContext.Projects,
-                        pm => pm.ProjectId,
-                        p => p.Id,
-                        (pm, p) => new ProjectDetailsResponse(
-                            p.Id,
-                            p.Name,
-                            p.Description,
-                            p.CreatedAtUtc,
-                            p.UpdatedAtUtc))
-                    .ToListAsync(cancellationToken);
-            }
+
+            return await _dbContext.Projects
+                .AsNoTracking()
+                .Select(p => new ProjectDetailsResponse(
+                    p.Id,
+                    p.Name,
+                    p.Description,
+                    p.CreatedAtUtc,
+                    p.UpdatedAtUtc))
+                .ToListAsync(cancellationToken);
         }
+
+    
+
 
         public async Task<ProjectDetailsResponse> GetByIdAsync(
             Guid projectId,
-            Guid currentUserId,
-            bool isAdmin,
             CancellationToken cancellationToken = default)
         {
             var project = await _dbContext.Projects
@@ -97,16 +76,6 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
             if (project is null)
                 throw new KeyNotFoundException("Project not found.");
-
-            if (!isAdmin)
-            {
-                var hasAccess = await _dbContext.ProjectMembers
-                    .AsNoTracking()
-                    .AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == currentUserId, cancellationToken);
-
-                if (!hasAccess)
-                    throw new UnauthorizedAccessException("You do not have access to this project.");
-            }
 
             return new ProjectDetailsResponse(
                 project.Id,
