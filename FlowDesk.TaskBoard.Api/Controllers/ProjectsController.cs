@@ -85,7 +85,10 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         }
 
         [HttpGet("{projectId:guid}/tasks")]
-        public async Task<ActionResult<IEnumerable<ProjectTaskOverviewDto>>> GetTasks(Guid projectId, CancellationToken cancellationToken)
+        public async Task<ActionResult<IEnumerable<ProjectTaskOverviewDto>>> GetTasks(
+            Guid projectId,
+            [FromQuery] bool includeArchived,
+            CancellationToken cancellationToken)
         {
             if (!TryGetCurrentUserId(out var currentUserId))
                 return Unauthorized(new { message = "Invalid token subject." });
@@ -96,6 +99,7 @@ namespace FlowDesk.TaskBoard.Api.Controllers
                     projectId,
                     currentUserId,
                     User.IsInRole(nameof(SystemRole.Admin)),
+                    includeArchived,
                     cancellationToken);
 
                 return Ok(tasks);

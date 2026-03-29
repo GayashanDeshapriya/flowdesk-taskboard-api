@@ -98,6 +98,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             Guid projectId,
             Guid currentUserId,
             bool isAdmin,
+            bool includeArchived,
             CancellationToken cancellationToken = default)
         {
             if (currentUserId == Guid.Empty)
@@ -220,6 +221,38 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             }
 
             task.ChangeStatus(request.NewStatus);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return ToDto(task);
+        }
+
+        public async Task<TaskDto> ArchiveTaskAsync(
+            Guid taskId,
+            Guid currentUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
+        {
+            if (currentUserId == Guid.Empty)
+                throw new UnauthorizedAccessException("Invalid current user.");
+
+            var task = await _dbContext.TaskItems
+                .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+
+            if (task is null)
+                throw new KeyNotFoundException($"Task '{taskId}' was not found.");
+
+            if (!isAdmin)
+            {
+                var hasAccess = await _dbContext.ProjectMembers
+                    .AsNoTracking()
+                    .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == currentUserId, cancellationToken);
+
+                if (!hasAccess)
+                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
+            }
+
+            task.Archive();
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 

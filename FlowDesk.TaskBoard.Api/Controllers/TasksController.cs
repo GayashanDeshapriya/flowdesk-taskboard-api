@@ -147,6 +147,36 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         }
 
 
+        [HttpPatch("{taskId:guid}/archive")]
+        public async Task<ActionResult<TaskDto>> Archive(Guid taskId, CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var currentUserId))
+                return Unauthorized(new { message = "Invalid token subject." });
+
+            try
+            {
+                var archived = await _taskService.ArchiveTaskAsync(
+                    taskId,
+                    currentUserId,
+                    User.IsInRole(nameof(SystemRole.Admin)),
+                    cancellationToken);
+
+                return Ok(archived);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+        }
+
         private bool TryGetCurrentUserId(out Guid userId)
         {
             var rawUserId =
