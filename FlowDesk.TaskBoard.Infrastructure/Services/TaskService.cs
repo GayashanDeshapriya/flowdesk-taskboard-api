@@ -130,6 +130,63 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             return tasks;
         }
 
+        public async Task<TaskDto> UpdateTaskAsync(
+            Guid taskId,
+            UpdateTaskRequest request,
+            Guid currentUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
+        {
+            if (currentUserId == Guid.Empty)
+                throw new UnauthorizedAccessException("Invalid current user.");
+
+            var task = await _dbContext.TaskItems
+                .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+
+            if (task is null)
+                throw new KeyNotFoundException($"Task '{taskId}' was not found.");
+
+            if (!isAdmin)
+            {
+                var hasAccess = await _dbContext.ProjectMembers
+                    .AsNoTracking()
+                    .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == currentUserId, cancellationToken);
+
+                if (!hasAccess)
+                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
+            }
+
+            if (task.IsArchived)
+                throw new InvalidOperationException("Archived tasks cannot be updated.");
+
+            if (request.AssigneeId == Guid.Empty)
+                throw new ArgumentException("AssigneeId cannot be an empty GUID.", nameof(request.AssigneeId));
+
+            if (request.AssigneeId.HasValue)
+            {
+                var assigneeExists = await _dbContext.Users
+                    .AsNoTracking()
+                    .AnyAsync(u => u.Id == request.AssigneeId.Value, cancellationToken);
+
+                if (!assigneeExists)
+                    throw new KeyNotFoundException($"Assignee '{request.AssigneeId.Value}' was not found.");
+
+                var assigneeInProject = await _dbContext.ProjectMembers
+                    .AsNoTracking()
+                    .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == request.AssigneeId.Value, cancellationToken);
+
+                if (!assigneeInProject)
+                    throw new InvalidOperationException("Assignee must be a member of the project.");
+            }
+
+            task.UpdateDetails(request.Title, request.Description, request.Priority, request.DueDateUtc);
+            task.AssignTo(request.AssigneeId);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return ToDto(task);
+        }
+
         private static TaskDto ToDto(TaskItem task) =>
             new(
                 task.Id,
