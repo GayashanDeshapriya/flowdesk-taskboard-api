@@ -1,29 +1,38 @@
 # FlowDesk TaskBoard API
 
-A layered ASP.NET Core 8.0 service that secures task and project management workflows for engineering teams. The solution follows a clean separation between API, Application, Domain, and Infrastructure layers, applies role-based authorization on every controller, and issues short-lived JWT access tokens. PostgreSQL (via EF Core) backs persistence, while the development startup path can reseed deterministic demo data for faster testing.
+FlowDesk TaskBoard is a production-ready ASP.NET Core 8.0 service for managing engineering projects, tasks, and team collaboration. The solution uses a domain-driven, layered architecture, enforces granular authorization with JWT access tokens, and persists data in PostgreSQL via Entity Framework Core. A live instance runs on Render at `https://flowdesk-taskboard-api.onrender.com`, connected to a managed Neon PostgreSQL cluster.
 
-## Key Decisions
-- **JWT + policies** – JSON Web Tokens are issued during login; API endpoints enforce `Admin`, `TeamLead`, or `TeamMember` roles via named authorization policies so each feature has explicit access rules.
-- **Layered architecture** – Domain entities are persistence-agnostic, Application layer exposes DTOs/services, and Infrastructure wires EF Core/Identity hashing. This keeps business logic testable and ready for future transports.
-- **Deterministic seeding** – Development startup can truncate and reseed reference users, a sample project, and tasks (see `SeedDatabase:ForceReseed`) so QA environments stay reproducible without manual SQL scripts.
+## Architecture & Key Decisions
+- **Layered solution** – API, Application, Domain, and Infrastructure projects isolate transport, orchestration, business logic, and persistence concerns for clean evolution.
+- **JWT with policy-based authorization** – Authenticated clients receive short-lived tokens; controllers apply `Admin`, `TeamLead`, or `TeamMember` policies so each route enforces the appropriate scope.
+- **PostgreSQL + EF Core** – PostgreSQL (local or Neon managed) stores authoritative data. EF Core migrations capture schema changes and keep environments aligned.
+- **Deterministic development seed** – Opt-in reseeding (`SeedDatabase:ForceReseed`) can rebuild a known dataset of users, project members, and tasks to accelerate demos and QA.
+
+## Live Environment
+- **Base URL**: `https://flowdesk-taskboard-api.onrender.com`
+- **Database**: Neon-managed PostgreSQL (connection strings supplied through environment-specific `appsettings*.json` or deployment secrets)
+- **Authentication flow**: Client apps authenticate via `/api/auth/login`, store the returned JWT, and pass it in the `Authorization: Bearer <token>` header for all protected routes.
 
 ## Prerequisites
-- [.NET SDK 8.0](https://dotnet.microsoft.com/en-us/download)
-- PostgreSQL 14+ (local instance or managed provider such as Neon)
-- (Optional) `dotnet-ef` CLI if you plan to add or re-create migrations: `dotnet tool install --global dotnet-ef`
+- [.NET SDK 8.0](https://dotnet.microsoft.com/download)
+- PostgreSQL 14+ (Neon, Docker, or local installation)
+- (Optional) `dotnet-ef` CLI for managing migrations:
+  ```bash
+  dotnet tool install --global dotnet-ef
+  ```
 
-## Run Locally
-1. **Clone & restore**
+## Local Setup
+1. **Clone & restore packages**
    ```bash
    git clone https://github.com/GayashanDeshapriya/flowdesk-taskboard-api.git
    cd flowdesk-taskboard-api
    dotnet restore
    ```
-2. **Configure secrets**
-   - Copy `FlowDesk.TaskBoard.Api/appsettings.Development.json` (or use [user secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets)).
-   - Set `ConnectionStrings:DefaultConnection` to your PostgreSQL database.
-   - Provide a 32+ char `Jwt:Key`, and update `Issuer/Audience` if the defaults do not match your environment.
-   - Optional: set `SeedDatabase:ForceReseed` to `true` only when you want to wipe and reseed the dev database on the next run.
+2. **Configure settings**
+   - Copy `FlowDesk.TaskBoard.Api/appsettings.Development.json` or configure [user secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets).
+   - Provide a `ConnectionStrings:DefaultConnection` that targets your PostgreSQL instance.
+   - Ensure `Jwt:Key` is at least 32 characters and adjust `Issuer/Audience` if necessary.
+   - Toggle `SeedDatabase:ForceReseed` to `true` when you want to rebuild the demo dataset (development use only).
 3. **Apply migrations**
    ```bash
    dotnet ef database update \
@@ -34,26 +43,23 @@ A layered ASP.NET Core 8.0 service that secures task and project management work
    ```bash
    dotnet run --project FlowDesk.TaskBoard.Api
    ```
-5. **Explore the docs** – Browse https://localhost:5001/swagger (or the HTTPS port logged on startup) to exercise the endpoints. Use the `Authorize` button to paste a JWT issued by the login endpoint.
+5. **Explore the API surface**
+   - Navigate to https://localhost:5001/swagger (or the HTTPS URL printed in the console).
+   - Authenticate using the login endpoint, then click `Authorize` to test secured routes.
 
-### Seeded Accounts (Development)
-If seeding is enabled, the following users become available (passwords are defined in `SeedData.cs`).
+## Seeded Accounts (Development)
+When seeding is enabled, the following reference users are created.
 
-| Role      | Email                           |
-|-----------|---------------------------------|
-| Admin     | `nimal.perera@flowdesk.io`      |
-| Team Lead | `kasun.silva@flowdesk.io`       |
-| Team Lead | `tharushi.kumari@flowdesk.io`   |
-| Team Member | `amali.fernando@flowdesk.io` |
-| Team Member | `sachin.jayawardena@flowdesk.io` |
+| Role        | Email                              | Password         |
+|-------------|------------------------------------|------------------|
+| Admin       | `nimal.perera@flowdesk.io`         | `P@ssw0rd#2026!` |
+| Team Lead   | `kasun.silva@flowdesk.io`          | `Secure#1234!`   |
+| Team Lead   | `tharushi.kumari@flowdesk.io`      | `Tharushi#2026!` |
+| Team Member | `amali.fernando@flowdesk.io`       | `Amali@2026!`    |
+| Team Member | `sachin.jayawardena@flowdesk.io`   | `Sachin#Dev01`   |
 
-## Known Limitations / Next Steps
-- **No refresh tokens or logout endpoints** – access tokens expire after one hour; rolling refresh/blacklist support would improve security.
-- **Minimal validation & error unification** – controllers handle common exceptions but lack a global problem-details formatter and FluentValidation rules.
-- **Missing automated tests** – the solution currently has no unit or integration tests; adding tests around services and controllers would harden future refactors.
-- **Single-project scope** – multi-project ownership and richer task board features (columns, attachments) are not implemented.
-
-## Questions / Improvements
-- Replace the hard-coded development connection strings with secrets or environment variables.
-- Add CI (GitHub Actions) to run `dotnet test`, linting, and DB migrations automatically.
-- Introduce pagination/filters across all list endpoints plus OpenAPI examples for easier client onboarding.
+## Layout
+- `FlowDesk.TaskBoard.Api` – ASP.NET Core entry point, controllers, dependency registration, middleware.
+- `FlowDesk.TaskBoard.Application` – DTOs, service abstractions, and business workflows.
+- `FlowDesk.TaskBoard.Domain` – Entities and enums shared across tiers.
+- `FlowDesk.TaskBoard.Infrastructure` – EF Core context, migrations, and service implementations (auth, projects, tasks).
