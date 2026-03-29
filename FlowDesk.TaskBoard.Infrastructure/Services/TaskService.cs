@@ -187,6 +187,46 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             return ToDto(task);
         }
 
+        public async Task<TaskDto> ChangeStatusAsync(
+           Guid taskId,
+           ChangeTaskStatusRequest request,
+           Guid currentUserId,
+           bool isAdmin,
+           CancellationToken cancellationToken = default)
+        {
+            if (currentUserId == Guid.Empty)
+                throw new UnauthorizedAccessException("Invalid current user.");
+
+            if (!Enum.IsDefined(request.NewStatus))
+                throw new ArgumentException("Invalid task status value.", nameof(request.NewStatus));
+
+            var task = await _dbContext.TaskItems
+                .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+
+            if (task is null)
+                throw new KeyNotFoundException($"Task '{taskId}' was not found.");
+
+            if (!Enum.IsDefined(task.Status))
+                throw new InvalidOperationException("Task has an invalid current status.");
+
+            if (!isAdmin)
+            {
+                var hasAccess = await _dbContext.ProjectMembers
+                    .AsNoTracking()
+                    .AnyAsync(pm => pm.ProjectId == task.ProjectId && pm.UserId == currentUserId, cancellationToken);
+
+                if (!hasAccess)
+                    throw new UnauthorizedAccessException("Current user is not a member of the project.");
+            }
+
+            task.ChangeStatus(request.NewStatus);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return ToDto(task);
+        }
+
+
         private static TaskDto ToDto(TaskItem task) =>
             new(
                 task.Id,

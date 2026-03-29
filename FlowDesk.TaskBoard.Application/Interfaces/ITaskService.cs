@@ -31,5 +31,12 @@ namespace FlowDesk.TaskBoard.Application.Interfaces
             Guid currentUserId,
             bool isAdmin,
             CancellationToken cancellationToken = default);
+
+        Task<TaskDto> ChangeStatusAsync(
+            Guid taskId,
+            ChangeTaskStatusRequest request,
+            Guid currentUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default);
     }
 }

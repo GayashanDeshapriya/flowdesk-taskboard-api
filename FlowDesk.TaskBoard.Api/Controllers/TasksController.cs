@@ -107,6 +107,46 @@ namespace FlowDesk.TaskBoard.Api.Controllers
             }
         }
 
+
+        [HttpPatch("{taskId:guid}/status")]
+        public async Task<ActionResult<TaskDto>> ChangeStatus(
+            Guid taskId,
+            [FromBody] ChangeTaskStatusRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUserId(out var currentUserId))
+                return Unauthorized(new { message = "Invalid token subject." });
+
+            try
+            {
+                var updated = await _taskService.ChangeStatusAsync(
+                    taskId,
+                    request,
+                    currentUserId,
+                    User.IsInRole(nameof(SystemRole.Admin)),
+                    cancellationToken);
+
+                return Ok(updated);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+        }
+
+
         private bool TryGetCurrentUserId(out Guid userId)
         {
             var rawUserId =
