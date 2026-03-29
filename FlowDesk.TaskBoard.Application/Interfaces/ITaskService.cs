@@ -9,7 +9,12 @@ namespace FlowDesk.TaskBoard.Application.Interfaces
 {
     public interface ITaskService
     {
-        Task<TaskDto> CreateTaskAsync(CreateTaskRequest request, CancellationToken cancellationToken = default);
-        Task<TaskDto?> GetTaskByIdAsync(Guid taskId, CancellationToken cancellationToken = default);
+        Task<TaskDto> CreateTaskAsync(
+            CreateTaskRequest request,
+            Guid currentUserId,
+            CancellationToken cancellationToken = default);
+        Task<TaskDto?> GetTaskByIdAsync(
+            Guid taskId, 
+            CancellationToken cancellationToken = default);
     }
 }

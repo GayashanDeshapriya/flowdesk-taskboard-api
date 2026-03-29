@@ -2,6 +2,8 @@
 using FlowDesk.TaskBoard.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace FlowDesk.TaskBoard.Api.Controllers
 {
@@ -20,9 +22,12 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<TaskDto>> Create([FromBody] CreateTaskRequest request, CancellationToken cancellationToken)
         {
+            if (!TryGetCurrentUserId(out var currentUserId))
+                return Unauthorized(new { message = "Invalid token subject." });
+
             try
             {
-                var created = await _taskService.CreateTaskAsync(request, cancellationToken);
+                var created = await _taskService.CreateTaskAsync(request,currentUserId, cancellationToken);
                 return CreatedAtAction(nameof(GetById), new { taskId = created.Id }, created);
             }
             catch (KeyNotFoundException ex)
@@ -44,6 +49,15 @@ namespace FlowDesk.TaskBoard.Api.Controllers
         {
             var task = await _taskService.GetTaskByIdAsync(taskId, cancellationToken);
             return task is null ? NotFound() : Ok(task);
+        }
+
+        private bool TryGetCurrentUserId(out Guid userId)
+        {
+            var rawUserId =
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+            return Guid.TryParse(rawUserId, out userId);
         }
     }
 }

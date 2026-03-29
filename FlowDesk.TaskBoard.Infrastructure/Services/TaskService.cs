@@ -15,19 +15,26 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
             _dbContext = dbContext;
         }
 
-        public async Task<TaskDto> CreateTaskAsync(CreateTaskRequest request, CancellationToken cancellationToken = default)
+        public async Task<TaskDto> CreateTaskAsync(
+            CreateTaskRequest request,
+            Guid currentUserId,
+            CancellationToken cancellationToken = default)
         {
+            if (currentUserId == Guid.Empty)
+                throw new UnauthorizedAccessException("Invalid current user.");
+
             var projectExists = await _dbContext.Projects
                 .AnyAsync(p => p.Id == request.ProjectId, cancellationToken);
 
             if (!projectExists)
                 throw new KeyNotFoundException($"Project '{request.ProjectId}' was not found.");
 
-            var creatorExists = await _dbContext.Users
-                .AnyAsync(u => u.Id == request.CreatedById, cancellationToken);
+            var creatorInProject = await _dbContext.ProjectMembers
+                .AsNoTracking()
+                .AnyAsync(pm => pm.ProjectId == request.ProjectId && pm.UserId == currentUserId, cancellationToken);
 
-            if (!creatorExists)
-                throw new KeyNotFoundException($"Creator '{request.CreatedById}' was not found.");
+            if (!creatorInProject)
+                throw new UnauthorizedAccessException("Current user is not a member of the project.");
 
             if (request.AssigneeId.HasValue)
             {
@@ -46,7 +53,7 @@ namespace FlowDesk.TaskBoard.Infrastructure.Services
 
             var task = new TaskItem(
                 request.ProjectId,
-                request.CreatedById,
+                currentUserId,
                 request.Title,
                 request.Priority,
                 request.DueDateUtc,

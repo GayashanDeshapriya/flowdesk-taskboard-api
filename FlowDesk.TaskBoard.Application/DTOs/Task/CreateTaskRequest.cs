@@ -3,8 +3,7 @@
 namespace FlowDesk.TaskBoard.Application.DTOs.Task
 {
     public sealed record CreateTaskRequest(
-    Guid ProjectId,
-        Guid CreatedById,
+        Guid ProjectId,
         string Title,
         TaskPriority Priority,
         DateTimeOffset? DueDateUtc,
